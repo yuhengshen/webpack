@@ -28,22 +28,42 @@ export class JumpDefinitionProvider implements DefinitionProvider {
         }
         // replace extensions
         const dir = path.dirname(document.uri.path);
-        let usedExtension = false;
         const reverse = (extensionsIndex: number): string | null => {
             const relativePath = extensionsIndex === -1 ? word : `${word}${this.extensions[extensionsIndex]}`;
             const tempPath = (path.resolve(dir, relativePath));
-            const isExit = fs.existsSync(tempPath);
-            if(!isExit ) {
-                if (extensionsIndex < this.extensions.length) return reverse(extensionsIndex + 1);
-                return null;
-            } else {
-                usedExtension = true;
-                // vetur has impl these provider
-                if (!usedAlias && ['.js', '.jsx', '.ts', '.tsx'].includes(this.extensions[extensionsIndex])) {
-                    return null;
+            try {
+                const state = fs.statSync(tempPath);
+                if (state.isFile()) {
+                    // vetur has impl these provider
+                    if (!usedAlias && ['.js', '.jsx', '.ts', '.tsx'].includes(this.extensions[extensionsIndex])) {
+                        return null;
+                    }
+                    return tempPath;
+                };
+                if (extensionsIndex === -1) {
+                    const arr = ['.js', '.jsx', '.ts', '.tsx', ...this.extensions];
+                    // exit tempPath.js/tempPath.jsx/tempPath.jsx...
+                    for (let i = 0; i < arr.length; i++) {
+                        const isExit = fs.existsSync(`${tempPath}${arr[i]}`);
+                        if (isExit) {
+                            return `${tempPath}${arr[i]}`;
+                        }
+                    }
+                    // exit tempPath/index.js/tempPath/index.jsx/tempPath/index.jsx...
+                    if (state.isDirectory()) {
+                        for (let i = 0; i < arr.length; i++) {
+                            const isExit = fs.existsSync(path.resolve(tempPath, `./index${arr[i]}`));
+                            if (isExit) {
+                                return path.resolve(tempPath, `./index${arr[i]}`);
+                            }
+                        }
+                    }
                 }
-                return tempPath;
-            }
+            } catch {
+                // not exit tempPath
+                if (extensionsIndex < this.extensions.length) return reverse(extensionsIndex + 1);
+             }
+            return null;
         };
         const filepath = reverse(-1);
 

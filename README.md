@@ -1,3 +1,3 @@
-# webpack helper
+# webpack alias and extensions helper
 
-test version
+Import configuration file: `command shift p` => `webpack`

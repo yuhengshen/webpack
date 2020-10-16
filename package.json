@@ -4,13 +4,18 @@
 	"displayName": "webpack",
 	"license": "MIT",
 	"description": "",
-	"version": "0.0.1",
+	"version": "0.0.3",
+	"repository": {
+		"type": "github",
+		"url": "https://github.com/yuhengshen/webpack"
+	},
 	"engines": {
 		"vscode": "^1.50.0"
 	},
 	"categories": [
 		"Other"
 	],
+	"icon": "./asserts/icon-square-big.png",
 	"activationEvents": [
 		"onStartupFinished",
 		"onCommand:extension.path"
@@ -20,7 +25,7 @@
 		"commands": [
 			{
 				"command": "extension.path",
-				"title": "webpack config"
+				"title": "webpack"
 			}
 		]
 	},
