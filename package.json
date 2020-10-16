@@ -1,6 +1,8 @@
 {
-  "name": "webpack-helper",
-	"displayName": "webpack-helper",
+	"name": "webpack",
+	"publisher": "yuhengshen",
+	"displayName": "webpack",
+	"license": "MIT",
 	"description": "",
 	"version": "0.0.1",
 	"engines": {
@@ -10,14 +12,15 @@
 		"Other"
 	],
 	"activationEvents": [
-        "onCommand:webpack-helper.helper"
+		"onStartupFinished",
+		"onCommand:extension.path"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "webpack-helper.helper",
-				"title": "helper"
+				"command": "extension.path",
+				"title": "webpack config"
 			}
 		]
 	},

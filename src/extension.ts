@@ -1,27 +1,42 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as path from 'path';
+import { JumpDefinitionProvider} from "./Provider";
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
+const showError = vscode.window.showErrorMessage;
+const showInfo = vscode.window.showInformationMessage;
+const showWarn = vscode.window.showWarningMessage;
+
 export function activate(context: vscode.ExtensionContext) {
+	async function main() {
+		const webpackConfigPath = context.workspaceState.get("webpackConfigPath") as string || "./webpack.config.js";
+		const rootPath = vscode.workspace.workspaceFolders![0].uri.path;
+		let webpackConfig;
+		try {
+			webpackConfig = await import(path.resolve(rootPath, webpackConfigPath));
+		} catch (e) {
+			return;
+		}
+		const alias = webpackConfig.resolve?.alias || {};
+		const extensions = webpackConfig.resolve?.extensions || [];
+		vscode.languages.registerDefinitionProvider({
+			scheme: "file",
+			pattern: "**/*.{js,jsx,ts,tsx,vue}"
+		}, new JumpDefinitionProvider({extensions, alias}));
+	}
+	main();
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "webpack-helper" is now active!');
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('webpack-helper.helper', () => {
-		// The code you place here will be executed every time your command is executed
-
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello vscode from webpack-helper!');
+	const disposable = vscode.commands.registerCommand("extension.path", async () => {
+		vscode.window.showOpenDialog({
+			canSelectFolders: false,
+			canSelectMany: false,
+			title: "select webpack configuration file"
+		}).then(uri => {
+			if (uri && uri.length > 0) {
+				context.workspaceState.update("webpackConfigPath", uri[0].path);
+			}
+			main();
+		});
 	});
-
 	context.subscriptions.push(disposable);
 }
-
-// this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
