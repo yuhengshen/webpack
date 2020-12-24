@@ -8,7 +8,7 @@ const showInfo = vscode.window.showInformationMessage;
 const showWarn = vscode.window.showWarningMessage;
 // 工作区目录可能有多个
 // todo:: 处理多工作区
-const projectDir = vscode.workspace.workspaceFolders?.[0];
+const projectDir = vscode.workspace.workspaceFolders?.[0].uri.path!;
 export function activate(context: vscode.ExtensionContext) {
   if (!projectDir) return;
   const disposable = vscode.commands.registerCommand(
@@ -31,32 +31,51 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 let definitionProvider: vscode.Disposable | undefined;
-let filewatcher: vscode.FileSystemWatcher | undefined;
+let fileWatcher: vscode.FileSystemWatcher | undefined;
 
 export function deactivate() {
   definitionProvider?.dispose();
-  filewatcher?.dispose();
+  fileWatcher?.dispose();
 }
-
-async function main(context: vscode.ExtensionContext) {
-  const webpackConfigPath =
-    (context.workspaceState.get("webpackConfigPath") as string) ||
-    "./webpack.config.js";
-  const rootPath = vscode.workspace.workspaceFolders![0].uri.path;
-  const fullPath = path.resolve(rootPath, webpackConfigPath);
-  if (!fs.existsSync(fullPath)) {
-    return [];
-  }
+const defaultWebpackConfigPath = [
+  "./webpack.config.js",
+  "./config/webpack.config.js",
+  "node_modules/react-scripts/config/webpack", // create-react-app
+  "node_modules/@vue/cli-service/webpack.config.js", // vue-cli
+];
+async function main(context: vscode.ExtensionContext): Promise<void> {
+  const webpackConfigPaths = [
+    context.workspaceState.get<string>("webpackConfigPath"),
+    ...defaultWebpackConfigPath,
+  ];
+  const fullPath = webpackConfigPaths
+    .filter((item) => item !== undefined)
+    .map((item) => path.resolve(projectDir, item!))
+    .find((path) => {
+      let isFile = false;
+      try {
+        isFile = fs.statSync(path).isFile();
+      } catch {}
+      return isFile;
+    });
+  // no configuration file
+  if (!fullPath) return;
   let webpackConfig;
   try {
-    delete require.cache[
-      require.resolve(path.resolve(rootPath, webpackConfigPath))
-    ];
+    delete require.cache[require.resolve(fullPath)];
     // process cwd
-    webpackConfig = require(path.resolve(rootPath, webpackConfigPath));
+    // create-react-app use [project dir, env.NODE_ENV]
+    const cwd = process.cwd();
+    const env = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    process.chdir(projectDir);
+    webpackConfig = require(fullPath);
+    // reset cwd & env
+    process.chdir(cwd);
+    process.env.NODE_ENV = env;
   } catch (e) {
     showError(`load webpack config error: ${e}`);
-    return [];
+    return;
   }
   const alias = webpackConfig.resolve?.alias || {};
   const extensions = webpackConfig.resolve?.extensions || [];
@@ -69,14 +88,14 @@ async function main(context: vscode.ExtensionContext) {
     new JumpDefinitionProvider({ extensions, alias })
   );
   // configuration file watcher
-  filewatcher?.dispose();
-  filewatcher = vscode.workspace.createFileSystemWatcher(
+  fileWatcher?.dispose();
+  fileWatcher = vscode.workspace.createFileSystemWatcher(
     fullPath,
     true,
     false,
     true
   );
-  filewatcher.onDidChange(() => main(context));
+  fileWatcher.onDidChange(() => main(context));
 
   showInfo("webpack helper has been enabled");
 }
