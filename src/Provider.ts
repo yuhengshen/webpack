@@ -39,12 +39,15 @@ export class JumpDefinitionProvider implements DefinitionProvider {
     const isRelative = isRelativeStart(word);
     if (!isRelative) {
       // replace alias
-      const isAlias = Object.keys(this.alias).some((alias) => {
-        if (word.startsWith(alias)) {
-          word = word.replace(alias, this.alias[alias]);
-          return true;
-        }
-      });
+      const isAlias = Object.keys(this.alias)
+        .sort()
+        .reverse() // match '@component, @style' before '@'
+        .some((alias) => {
+          if (word.startsWith(alias)) {
+            word = word.replace(alias, this.alias[alias]);
+            return true;
+          }
+        });
       if (!isAlias) return;
     } else {
       const useDefaultCommonEnd = commonExt.some((ext) => {
